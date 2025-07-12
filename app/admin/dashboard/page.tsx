@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -22,11 +22,13 @@ import {
   EyeOff,
 } from "lucide-react"
 import { fetchEntries, fetchStats, updateEntryStatus, deleteEntry, type GiveawayEntry, type AdminStats, bulkDeleteEntries } from "@/lib/admin-service"
+import { setGiveawayState, subscribeGiveawayState } from "@/lib/database"
 
 export default function AdminDashboard() {
   const router = useRouter()
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [userEntries, setUserEntries] = useState<GiveawayEntry[]>([])
+  const [oneHourLeft, setOneHourLeft] = useState(0)
   const [stats, setStats] = useState<AdminStats>({
     totalUsers: 0,
     todayUsers: 0,
@@ -37,10 +39,11 @@ export default function AdminDashboard() {
   })
   const [customTimeout, setCustomTimeout] = useState("")
   const [giveawayActive, setGiveawayActive] = useState(true)
-  const [timeLeft, setTimeLeft] = useState("")
+  const [giveawayTimer, setGiveawayTimer] = useState<number | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [selectedStatus, setSelectedStatus] = useState<string>("all")
   const [showOtp, setShowOtp] = useState<{ [key: string]: boolean }>({})
+  const timerInterval = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
     // Check admin authentication
@@ -66,22 +69,16 @@ export default function AdminDashboard() {
     loadUserData()
     loadStats()
 
-    // Update time left
-    const updateTimeLeft = () => {
-      const now = new Date()
-      const tomorrow = new Date(now)
-      tomorrow.setDate(tomorrow.getDate() + 1)
-      tomorrow.setHours(0, 0, 0, 0)
-
-      const diff = tomorrow.getTime() - now.getTime()
-      const hours = Math.floor(diff / (1000 * 60 * 60))
-      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
-
-      setTimeLeft(`${hours}h ${minutes}m`)
-    }
-
-    updateTimeLeft()
-    const timer = setInterval(updateTimeLeft, 60000)
+    // Subscribe to real-time giveaway state
+    const unsub = subscribeGiveawayState((state) => {
+      setGiveawayActive(state.isActive)
+      if (state.isActive && state.closeTime) {
+        const msLeft = state.closeTime.getTime() - Date.now()
+        setGiveawayTimer(msLeft > 0 ? Math.floor(msLeft / 1000) : 0)
+      } else {
+        setGiveawayTimer(null)
+      }
+    })
 
     // Auto-refresh dashboard every 5 seconds
     const autoRefresh = setInterval(() => {
@@ -90,10 +87,26 @@ export default function AdminDashboard() {
     }, 5000)
 
     return () => {
-      clearInterval(timer)
       clearInterval(autoRefresh)
+      unsub()
+      if (timerInterval.current) clearInterval(timerInterval.current)
     }
   }, [router])
+
+  // Add this effect to make the timer dynamic
+  useEffect(() => {
+    if (giveawayActive && giveawayTimer !== null) {
+      if (timerInterval.current) clearInterval(timerInterval.current)
+      timerInterval.current = setInterval(() => {
+        setGiveawayTimer(prev => (prev !== null && prev > 0 ? prev - 1 : 0))
+      }, 1000)
+    } else {
+      if (timerInterval.current) clearInterval(timerInterval.current)
+    }
+    return () => {
+      if (timerInterval.current) clearInterval(timerInterval.current)
+    }
+  }, [giveawayActive, giveawayTimer])
 
   const loadUserData = async () => {
     setIsLoading(true)
@@ -158,14 +171,17 @@ export default function AdminDashboard() {
     }
   }
 
-  const handleEndGiveaway = () => {
+  const handleEndGiveaway = async () => {
     if (window.confirm("Are you sure you want to end the current giveaway immediately?")) {
-      setGiveawayActive(false)
-      localStorage.setItem("giveawayEnded", "true")
-      localStorage.removeItem("giveawayReopenTime")
-      localStorage.removeItem("giveawayCloseTime")
+      await setGiveawayState(false, null)
       alert("Giveaway has been ended. Users will no longer be able to enter.")
     }
+  }
+
+  const handleReactivateGiveaway = async () => {
+    const closeTime = new Date(Date.now() + 60 * 60 * 1000)
+    await setGiveawayState(true, closeTime)
+    alert("Giveaway has been reactivated for 1 hour!")
   }
 
   const handleSetCustomTimeout = () => {
@@ -185,15 +201,6 @@ export default function AdminDashboard() {
     setCustomTimeout("")
   }
 
-  const handleReactivateGiveaway = () => {
-    setGiveawayActive(true)
-    localStorage.setItem("giveawayEnded", "false")
-    const now = Date.now()
-    localStorage.setItem("giveawayReopenTime", now.toString())
-    localStorage.setItem("giveawayCloseTime", (now + 60 * 60 * 1000).toString()) // 1 hour from now
-    alert("Giveaway has been reactivated for 1 hour!")
-  }
-
   const handleStatusChange = async (entryId: string, newStatus: 'pending' | 'verified' | 'completed') => {
     try {
       const result = await updateEntryStatus(entryId, newStatus)
@@ -211,6 +218,17 @@ export default function AdminDashboard() {
       alert("Failed to update status. Please try again.")
     }
   }
+
+  // let oneHourTimer = null
+  // if (oneHourLeft > 0) {
+  //   const min = Math.floor(oneHourLeft / 60)
+  //   const sec = oneHourLeft % 60
+  //   oneHourTimer = (
+  //     <div className="text-center mb-4 text-yellow-400 font-bold">
+  //       Giveaway closes in {min}:{sec.toString().padStart(2, '0')}
+  //     </div>
+  //   )
+  // }
 
   const handleDeleteEntry = async (entryId: string) => {
     if (window.confirm("Are you sure you want to delete this entry?")) {
@@ -351,17 +369,12 @@ export default function AdminDashboard() {
             </CardContent>
           </Card>
 
-          <Card className="bg-gray-800/50 border-gray-700 backdrop-blur-sm">
-            <CardContent className="p-6">
-              <div className="flex items-center">
-                <Clock className="w-8 h-8 text-orange-400" />
-                <div className="ml-4">
-                  <p className="text-sm text-gray-400">Time Left</p>
-                  <p className="text-2xl font-bold text-white">{timeLeft}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          {/* The only timer display should be: */}
+          {giveawayActive && giveawayTimer !== null && (
+            <div className="text-center mb-4 text-yellow-400 font-bold">
+              Giveaway closes in {`${Math.floor(giveawayTimer / 60)}:${(giveawayTimer % 60).toString().padStart(2, '0')}`}
+            </div>
+          )}
         </div>
 
         {/* Control Panel */}

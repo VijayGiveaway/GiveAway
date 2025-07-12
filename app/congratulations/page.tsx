@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { Share2, Home, Calendar, Trophy } from "lucide-react"
+import { Share2, Home, Calendar, Trophy ,Plane } from "lucide-react"
 import { updateGiveawayEntry } from "@/lib/database"
 
 export default function CongratulationsPage() {
@@ -16,8 +16,11 @@ export default function CongratulationsPage() {
 
   useEffect(() => {
     // Get entry ID from sessionStorage
-    const storedEntryId = sessionStorage.getItem("giveawayEntryId")
+    console.log("sessionStorage :", sessionStorage);
+    
+    const storedEntryId = sessionStorage.getItem("entryId")
     if (!storedEntryId) {
+      console.log("No entry ID found")
       // If no entry ID, redirect to homepage
       router.push("/")
       return
@@ -68,7 +71,7 @@ export default function CongratulationsPage() {
     sessionStorage.removeItem("giveawayEntryId")
     sessionStorage.removeItem("giveawayData")
     // Navigate to homepage
-    router.push("/")
+    router.push("https://t.me/daily_giveaway_bot")
   }
 
   return (
@@ -162,8 +165,8 @@ export default function CongratulationsPage() {
                   className="flex-1 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-semibold h-12 shadow-lg shadow-blue-500/25"
                   onClick={handleNewEntry}
                 >
-                  <Home className="w-4 h-4 mr-2" />
-                  Tomorrow's Entry
+                  <Plane className="w-4 h-4 mr-2" />
+                  Telegram Channel
                 </Button>
                 <Button
                   variant="outline"

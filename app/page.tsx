@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Calendar, Clock, Users, XCircle, Loader2, AlertCircle } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { subscribeGiveawayState } from "@/lib/database"
 
 export default function SignupPage() {
   const router = useRouter()
@@ -27,52 +28,40 @@ export default function SignupPage() {
   const [showForm, setShowForm] = useState(true)
 
   useEffect(() => {
-    // Check if giveaway is ended by admin
-    const giveawayEnded = localStorage.getItem("giveawayEnded")
-    const closeTime = localStorage.getItem("giveawayCloseTime")
-    const now = Date.now()
-
-    if (giveawayEnded === "true" && !closeTime) {
-      setGiveawayClosedMsg("We will start soon.")
-      setShowForm(false)
-      return
-    }
-
-    if (giveawayEnded === "false" && closeTime) {
-      const msLeft = parseInt(closeTime) - now
-      if (msLeft > 0) {
-        setOneHourLeft(Math.floor(msLeft / 1000))
-        setShowForm(true)
-        setGiveawayClosedMsg("")
-        const timer = setInterval(() => {
-          const ms = parseInt(localStorage.getItem("giveawayCloseTime") || "0") - Date.now()
-          if (ms <= 0) {
-            setShowForm(false)
-            setGiveawayClosedMsg("We will start soon.")
-            localStorage.setItem("giveawayEnded", "true")
-            localStorage.removeItem("giveawayCloseTime")
-            clearInterval(timer)
-          } else {
-            setOneHourLeft(Math.floor(ms / 1000))
-          }
-        }, 1000)
-        return () => clearInterval(timer)
-      } else {
+    // Subscribe to real-time giveaway state
+    const unsub = subscribeGiveawayState((state) => {
+      if (!state.isActive) {
         setShowForm(false)
         setGiveawayClosedMsg("We will start soon.")
-        localStorage.setItem("giveawayEnded", "true")
-        localStorage.removeItem("giveawayCloseTime")
+        setOneHourLeft(0)
         return
       }
-    }
-
-    if (giveawayEnded === "true") {
-      setGiveawayClosedMsg("We will start soon.")
-      setShowForm(false)
-      return
-    }
-    setShowForm(true)
-    setGiveawayClosedMsg("")
+      if (state.closeTime) {
+        const msLeft = state.closeTime ? state.closeTime.getTime() - Date.now() : 0
+        if (msLeft > 0) {
+          setShowForm(true)
+          setGiveawayClosedMsg("")
+          setOneHourLeft(Math.floor(msLeft / 1000))
+          // Start a timer to update every second
+          const timer = setInterval(() => {
+            const ms = state.closeTime ? state.closeTime.getTime() - Date.now() : 0
+            if (ms <= 0) {
+              setShowForm(false)
+              setGiveawayClosedMsg("We will start soon.")
+              setOneHourLeft(0)
+              clearInterval(timer)
+            } else {
+              setOneHourLeft(Math.floor(ms / 1000))
+            }
+          }, 1000)
+          return () => clearInterval(timer)
+        } else {
+          setShowForm(false)
+          setGiveawayClosedMsg("We will start soon.")
+          setOneHourLeft(0)
+        }
+      }
+    })
 
     // Set current date
     const today = new Date()
@@ -100,12 +89,15 @@ export default function SignupPage() {
     }
 
     updateTimeLeft()
-    const timer = setInterval(updateTimeLeft, 60000) // Update every minute
+    const timer2 = setInterval(updateTimeLeft, 60000) // Update every minute
 
     // Load daily entries count from backend
     loadDailyEntries()
 
-    return () => clearInterval(timer)
+    return () => {
+      unsub()
+      clearInterval(timer2)
+    }
   }, [])
 
   const loadDailyEntries = async () => {
@@ -199,7 +191,7 @@ export default function SignupPage() {
             </div>
             <div className="flex items-center text-orange-400">
               <Clock className="w-4 h-4 mr-2" />
-              <span>{timeLeft} left</span>
+              <span>{oneHourTimer}</span>
             </div>
           </div>
           <div className="flex items-center justify-between mt-2">
@@ -222,7 +214,7 @@ export default function SignupPage() {
           </div>
         </div>
 
-        {oneHourTimer}
+    
 
         {error && (
           <Alert className="mb-4 bg-red-900/50 border-red-500 text-red-100">

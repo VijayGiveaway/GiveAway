@@ -1,5 +1,5 @@
 // lib/database.ts
-import { collection, addDoc, doc, updateDoc, getDocs, query, where, orderBy, limit, Timestamp } from 'firebase/firestore';
+import { collection, addDoc, doc, updateDoc, getDocs, query, where, orderBy, limit, Timestamp, getDoc, setDoc, serverTimestamp, onSnapshot } from 'firebase/firestore';
 import { db } from './firebase';
 
 export interface GiveawayEntry {
@@ -114,3 +114,38 @@ export const checkTodaysEntry = async (email: string) => {
     return { success: false, error: error, exists: false };
   }
 };
+
+export async function getGiveawayState() {
+  const ref = doc(db, 'settings', 'giveaway')
+  const snap = await getDoc(ref)
+  if (!snap.exists()) return { isActive: false, closeTime: null }
+  const data = snap.data()
+  return {
+    isActive: data.isActive,
+    closeTime: data.closeTime ? data.closeTime.toDate() : null
+  }
+}
+
+export async function setGiveawayState(isActive: boolean, closeTime: Date | null) {
+  const ref = doc(db, 'settings', 'giveaway')
+  await setDoc(ref, {
+    isActive,
+    closeTime: closeTime ? Timestamp.fromDate(closeTime) : null,
+    updatedAt: serverTimestamp(),
+  }, { merge: true })
+}
+
+export function subscribeGiveawayState(callback: (state: {isActive: boolean, closeTime: Date | null}) => void) {
+  const ref = doc(db, 'settings', 'giveaway')
+  return onSnapshot(ref, (snap) => {
+    if (!snap.exists()) {
+      callback({ isActive: false, closeTime: null })
+      return
+    }
+    const data = snap.data()
+    callback({
+      isActive: data.isActive,
+      closeTime: data.closeTime ? data.closeTime.toDate() : null
+    })
+  })
+}

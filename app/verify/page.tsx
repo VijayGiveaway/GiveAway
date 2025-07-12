@@ -33,7 +33,7 @@ export default function VerifyPage() {
     setEntryId(storedEntryId)
 
     // Start 2-minute timer
-    setTimeLeft(5)
+    setTimeLeft(40)
     setTimerActive(true)
     timerRef.current = setInterval(() => {
       setTimeLeft((prev) => {

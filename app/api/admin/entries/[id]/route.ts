@@ -5,10 +5,11 @@ import { db } from '@/lib/firebase';
 // GET /api/admin/entries/[id] - Get a specific entry
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
-    const docRef = doc(db, 'giveaway_entries', params.id);
+    const { id } = context.params;
+    const docRef = doc(db, 'giveaway_entries', id);
     const docSnap = await getDoc(docRef);
 
     if (!docSnap.exists()) {
@@ -40,13 +41,14 @@ export async function GET(
 // PATCH /api/admin/entries/[id] - Update an entry
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
     const body = await request.json();
     const { status, ...updates } = body;
 
-    const docRef = doc(db, 'giveaway_entries', params.id);
+    const { id } = context.params;
+    const docRef = doc(db, 'giveaway_entries', id);
     const updateData = {
       ...updates,
       updatedAt: new Date(),
@@ -71,10 +73,11 @@ export async function PATCH(
 // DELETE /api/admin/entries/[id] - Delete an entry
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
-    const docRef = doc(db, 'giveaway_entries', params.id);
+    const { id } = context.params;
+    const docRef = doc(db, 'giveaway_entries', id);
     await deleteDoc(docRef);
 
     return NextResponse.json({ success: true });

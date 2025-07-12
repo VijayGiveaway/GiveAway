@@ -5,10 +5,10 @@ import { db } from '@/lib/firebase';
 // GET /api/admin/entries/[id] - Get a specific entry
 export async function GET(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = context.params;
+    const { id } = params;
     const docRef = doc(db, 'giveaway_entries', id);
     const docSnap = await getDoc(docRef);
 
@@ -41,13 +41,13 @@ export async function GET(
 // PATCH /api/admin/entries/[id] - Update an entry
 export async function PATCH(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: { params: { id: string } }
 ) {
   try {
     const body = await request.json();
     const { status, ...updates } = body;
 
-    const { id } = context.params;
+    const { id } = params;
     const docRef = doc(db, 'giveaway_entries', id);
     const updateData = {
       ...updates,
@@ -73,10 +73,10 @@ export async function PATCH(
 // DELETE /api/admin/entries/[id] - Delete an entry
 export async function DELETE(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = context.params;
+    const { id } = params;
     const docRef = doc(db, 'giveaway_entries', id);
     await deleteDoc(docRef);
 

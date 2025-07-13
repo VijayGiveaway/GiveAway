@@ -13,6 +13,8 @@ export default function CongratulationsPage() {
   const [currentDate, setCurrentDate] = useState("")
   const [nextGiveaway, setNextGiveaway] = useState("")
   const [entryId, setEntryId] = useState<string | null>(null)
+  const [timer, setTimer] = useState(30)
+  const [showConfirmed, setShowConfirmed] = useState(false)
 
   useEffect(() => {
     // Get entry ID from sessionStorage
@@ -39,31 +41,26 @@ export default function CongratulationsPage() {
     }
     completeEntry()
 
-    setShowConfetti(true)
-    const timer = setTimeout(() => setShowConfetti(false), 3000)
+    // Countdown timer
+    setTimer(30)
+    setShowConfirmed(false)
+    setShowConfetti(false) // <-- Ensure confetti is hidden initially
+    const interval = setInterval(() => {
+      setTimer((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval)
+          setShowConfirmed(true)
+          setShowConfetti(true) // <-- Show confetti when timer ends
+          setTimeout(() => setShowConfetti(false), 3000) // <-- Hide after 3s
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
 
-    // Set current date
-    const today = new Date()
-    setCurrentDate(
-      today.toLocaleDateString("en-US", {
-        weekday: "long",
-        month: "long",
-        day: "numeric",
-      }),
-    )
-
-    // Set next giveaway date
-    const tomorrow = new Date(today)
-    tomorrow.setDate(tomorrow.getDate() + 1)
-    setNextGiveaway(
-      tomorrow.toLocaleDateString("en-US", {
-        weekday: "long",
-        month: "long",
-        day: "numeric",
-      }),
-    )
-
-    return () => clearTimeout(timer)
+    return () => {
+      clearInterval(interval)
+    }
   }, [router])
 
   const handleNewEntry = () => {
@@ -71,7 +68,7 @@ export default function CongratulationsPage() {
     sessionStorage.removeItem("giveawayEntryId")
     sessionStorage.removeItem("giveawayData")
     // Navigate to homepage
-    router.push("https://t.me/daily_giveaway_bot")
+    router.push("https://t.me/D5TBOSS")
   }
 
   return (
@@ -82,8 +79,8 @@ export default function CongratulationsPage() {
         <div className="absolute -bottom-8 -right-4 w-72 h-72 bg-gradient-to-r from-green-600/20 to-blue-600/20 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-pulse animation-delay-2000"></div>
       </div>
 
-      {/* Confetti Animation */}
-      {showConfetti && (
+      {/* Confetti Animation and Hurray Message only after timer */}
+      {showConfirmed && showConfetti && (
         <div className="absolute inset-0 pointer-events-none">
           {[...Array(50)].map((_, i) => (
             <div
@@ -103,44 +100,59 @@ export default function CongratulationsPage() {
       )}
 
       <div className="w-full max-w-md relative z-10">
-        {/* Success Steps Indicator */}
-        <div className="flex items-center justify-center mb-8">
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center">
-              <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center shadow-lg shadow-green-500/25">
-                <span className="text-white text-sm font-semibold">✓</span>
+        {/* Success Steps Indicator and Hurray only after timer */}
+        {showConfirmed && (
+          <div className="flex items-center justify-center mb-8">
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center">
+                <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center shadow-lg shadow-green-500/25">
+                  <span className="text-white text-sm font-semibold">✓</span>
+                </div>
               </div>
-            </div>
-            <div className="w-12 h-0.5 bg-green-500"></div>
-            <div className="flex items-center">
-              <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center shadow-lg shadow-green-500/25">
-                <span className="text-white text-sm font-semibold">✓</span>
+              <div className="w-12 h-0.5 bg-green-500"></div>
+              <div className="flex items-center">
+                <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center shadow-lg shadow-green-500/25">
+                  <span className="text-white text-sm font-semibold">✓</span>
+                </div>
               </div>
-            </div>
-            <div className="w-12 h-0.5 bg-green-500"></div>
-            <div className="flex items-center">
-              <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center shadow-lg shadow-green-500/25">
-                <span className="text-white text-sm font-semibold">✓</span>
+              <div className="w-12 h-0.5 bg-green-500"></div>
+              <div className="flex items-center">
+                <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center shadow-lg shadow-green-500/25">
+                  <span className="text-white text-sm font-semibold">✓</span>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
 
         <Card className="shadow-2xl border border-gray-700 bg-gray-800/50 backdrop-blur-sm">
           <CardContent className="p-8 text-center">
             <div className="mb-6">
-              <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-r from-green-400 to-blue-500 rounded-full mb-4 animate-pulse shadow-lg shadow-green-500/25">
-                <Trophy className="w-10 h-10 text-white" />
-              </div>
-              <h1 className="text-4xl font-bold text-white mb-2">You're In!</h1>
-              <div className="w-16 h-1 bg-gradient-to-r from-green-400 to-blue-500 mx-auto rounded-full mb-4"></div>
+              {showConfirmed && (
+                <>
+                  <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-r from-green-400 to-blue-500 rounded-full mb-4 animate-pulse shadow-lg shadow-green-500/25">
+                    <Trophy className="w-10 h-10 text-white" />
+                  </div>
+                  <h1 className="text-4xl font-bold text-white mb-2">You're In!</h1>
+                  <div className="w-16 h-1 bg-gradient-to-r from-green-400 to-blue-500 mx-auto rounded-full mb-4"></div>
+                </>
+              )}
             </div>
 
             <div className="bg-gradient-to-r from-green-900/50 to-blue-900/50 rounded-lg p-4 border border-green-700/50 mb-6">
-              <p className="text-green-400 text-sm font-semibold mb-1">TODAY'S ENTRY CONFIRMED</p>
-              <p className="text-white text-lg font-bold">{currentDate}</p>
-              {entryId && (
-                <p className="text-gray-400 text-xs mt-1">Entry ID: {entryId.slice(-8)}</p>
+              {!showConfirmed ? (
+                <div>
+                  <p className="text-5xl font-extrabold text-yellow-400 mb-2">{timer}s</p>
+                  <p className="text-lg text-white font-semibold">Please wait while we confirm your entry...</p>
+                </div>
+              ) : (
+                <div>
+                  <p className="text-green-400 text-2xl font-bold mb-1">TODAY'S ENTRY CONFIRMED</p>
+                  <p className="text-white text-lg font-bold">{currentDate}</p>
+                  {entryId && (
+                    <p className="text-gray-400 text-xs mt-1">Entry ID: {entryId.slice(-8)}</p>
+                  )}
+                </div>
               )}
             </div>
 

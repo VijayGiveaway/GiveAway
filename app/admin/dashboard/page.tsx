@@ -287,7 +287,7 @@ export default function AdminDashboard() {
 
   // After fetching userEntries
   const pendingEntries = userEntries.filter(e => e.status === 'pending')
-  const verifiedEntries = userEntries.filter(e => e.status === 'verified')
+  const verifiedEntries = userEntries.filter(e => e.status === 'verified' || e.status === 'completed')
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900 p-4">
@@ -531,7 +531,9 @@ export default function AdminDashboard() {
                 <tbody>
                   {verifiedEntries.length === 0 ? (
                     <tr>
-                      <td colSpan={6} style={{ textAlign: "center" }}>No verified entries</td>
+                      <td colSpan={7} className="text-center p-8 text-gray-400">
+                        No verified entries
+                      </td>
                     </tr>
                   ) : (
                     verifiedEntries.map((entry) => (

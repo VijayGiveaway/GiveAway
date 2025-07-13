@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
     let entries: any[] = [];
 
     // Special handling for "verified" filter
-    if (status === "verified") {
+    if (status === "verified" || status === "completed") {
       // Query for status "verified"
       const verifiedQuery = query(
         collection(db, 'giveaway_entries'),
@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
           updatedAt: data.updatedAt?.toDate?.() || data.updatedAt,
         });
       });
-      completedSnapshot.forEach((doc) => {
+      Snapshot.forEach((doc) => {
         const data = doc.data();
         entries.push({
           id: doc.id,
@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
       const allSnapshot = await getDocs(allQuery);
       allSnapshot.forEach((doc) => {
         const data = doc.data();
-        if (data.verified === true && !entries.some(e => e.id === doc.id)) {
+        if (data.verified === true || data.status === "completed" && !entries.some(e => e.id === doc.id)) {
           entries.push({
             id: doc.id,
             ...data,

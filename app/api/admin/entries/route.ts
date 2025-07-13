@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDocs, collection, query, where, orderBy, limit } from 'firebase/firestore';
+import { getDocs, collection, query, where, orderBy, limit, Timestamp, addDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 // GET /api/admin/entries - Get all entries with optional filters

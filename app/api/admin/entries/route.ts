@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDocs, collection, query, where, orderBy, limit, Timestamp, addDoc } from 'firebase/firestore';
+import { getDocs, collection, query, where, orderBy, limit } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 // GET /api/admin/entries - Get all entries with optional filters
@@ -10,36 +10,86 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status');
     const limitParam = searchParams.get('limit');
 
-    let q = query(collection(db, 'giveaway_entries'), orderBy('createdAt', 'desc'));
+    let entries: any[] = [];
 
-    // Add date filter if provided
-    if (date) {
-      q = query(q, where('date', '==', date));
-    }
+    // Special handling for "verified" filter
+    if (status === "verified") {
+      // Query for status "verified"
+      const verifiedQuery = query(
+        collection(db, 'giveaway_entries'),
+        where('status', '==', 'verified')
+      );
+      const verifiedSnapshot = await getDocs(verifiedQuery);
 
-    // Add status filter if provided
-    if (status) {
-      q = query(q, where('status', '==', status));
-    }
+      // Query for status "completed"
+      const completedQuery = query(
+        collection(db, 'giveaway_entries'),
+        where('status', '==', 'completed')
+      );
+      const completedSnapshot = await getDocs(completedQuery);
 
-    // Add limit if provided
-    if (limitParam) {
-      q = query(q, limit(parseInt(limitParam)));
-    }
-
-    const querySnapshot = await getDocs(q);
-    const entries: any[] = [];
-
-    querySnapshot.forEach((doc) => {
-      const data = doc.data();
-      entries.push({
-        id: doc.id,
-        ...data,
-        timestamp: data.timestamp?.toDate?.() || data.timestamp,
-        createdAt: data.createdAt?.toDate?.() || data.createdAt,
-        updatedAt: data.updatedAt?.toDate?.() || data.updatedAt,
+      // Combine both
+      verifiedSnapshot.forEach((doc) => {
+        const data = doc.data();
+        entries.push({
+          id: doc.id,
+          ...data,
+          timestamp: data.timestamp?.toDate?.() || data.timestamp,
+          createdAt: data.createdAt?.toDate?.() || data.createdAt,
+          updatedAt: data.updatedAt?.toDate?.() || data.updatedAt,
+        });
       });
-    });
+      completedSnapshot.forEach((doc) => {
+        const data = doc.data();
+        entries.push({
+          id: doc.id,
+          ...data,
+          timestamp: data.timestamp?.toDate?.() || data.timestamp,
+          createdAt: data.createdAt?.toDate?.() || data.createdAt,
+          updatedAt: data.updatedAt?.toDate?.() || data.updatedAt,
+        });
+      });
+
+      // Also include any entries with verified: true (if not already included)
+      const allQuery = query(collection(db, 'giveaway_entries'));
+      const allSnapshot = await getDocs(allQuery);
+      allSnapshot.forEach((doc) => {
+        const data = doc.data();
+        if (data.verified === true && !entries.some(e => e.id === doc.id)) {
+          entries.push({
+            id: doc.id,
+            ...data,
+            timestamp: data.timestamp?.toDate?.() || data.timestamp,
+            createdAt: data.createdAt?.toDate?.() || data.createdAt,
+            updatedAt: data.updatedAt?.toDate?.() || data.updatedAt,
+          });
+        }
+      });
+
+    } else {
+      // Default: filter by status, date, limit as before
+      let q = query(collection(db, 'giveaway_entries'), orderBy('createdAt', 'desc'));
+      if (date) {
+        q = query(q, where('date', '==', date));
+      }
+      if (status) {
+        q = query(q, where('status', '==', status));
+      }
+      if (limitParam) {
+        q = query(q, limit(parseInt(limitParam)));
+      }
+      const querySnapshot = await getDocs(q);
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        entries.push({
+          id: doc.id,
+          ...data,
+          timestamp: data.timestamp?.toDate?.() || data.timestamp,
+          createdAt: data.createdAt?.toDate?.() || data.createdAt,
+          updatedAt: data.updatedAt?.toDate?.() || data.updatedAt,
+        });
+      });
+    }
 
     return NextResponse.json({ success: true, entries });
   } catch (error) {

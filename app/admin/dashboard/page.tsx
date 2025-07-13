@@ -531,9 +531,7 @@ export default function AdminDashboard() {
                 <tbody>
                   {verifiedEntries.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="text-center p-8 text-gray-400">
-                        No verified entries
-                      </td>
+                      <td colSpan={6} style={{ textAlign: "center" }}>No verified entries</td>
                     </tr>
                   ) : (
                     verifiedEntries.map((entry) => (

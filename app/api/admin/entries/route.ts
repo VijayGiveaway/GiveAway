@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
           updatedAt: data.updatedAt?.toDate?.() || data.updatedAt,
         });
       });
-      Snapshot.forEach((doc) => {
+      completedSnapshot.forEach((doc) => {
         const data = doc.data();
         entries.push({
           id: doc.id,
